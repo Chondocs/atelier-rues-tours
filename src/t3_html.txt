@@ -1,0 +1,200 @@
+
+<div id="app">
+  <header class="bar">
+    <div class="bar-in gut">
+      <div class="brand">
+        <span class="eyebrow">Tours Métropole</span>
+        <h1>Atelier des rues de Tours</h1>
+      </div>
+      <div class="actions">
+        <button class="btn" id="undo" type="button" disabled>Annuler</button>
+        <button class="btn" id="reset" type="button" disabled>Tout effacer</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="stage" id="stage">
+    <canvas id="map" role="img" aria-label="Carte des rues, du tram et des bus de Tours Métropole. Touchez une rue pour changer son usage."></canvas>
+    <div class="chips">
+      <button class="chip" id="fltBtn" type="button" aria-pressed="false">Calques</button>
+      <button class="chip" id="tramBtn" type="button">+ Tram</button>
+      <button class="chip" id="busBtn" type="button">+ Bus</button>
+    </div>
+    <div class="zoom">
+      <button class="btn" id="zin" type="button" aria-label="Zoom avant">+</button>
+      <button class="btn" id="zout" type="button" aria-label="Zoom arrière">−</button>
+      <button class="btn" id="home" type="button" aria-label="Recentrer sur le centre-ville" style="font-size:16px">⌖</button>
+      <button class="btn" id="wide" type="button" aria-label="Voir toute la métropole" style="font-size:15px">⤢</button>
+    </div>
+    <div class="scale" id="scale"></div>
+    <div class="attr">© contributeurs OpenStreetMap</div>
+    <div class="toast" id="toast" role="status" hidden></div>
+
+    <section class="flt" id="flt" hidden aria-label="Calques et filtres">
+      <div class="head">
+        <h2>Calques</h2>
+        <button class="btn" id="fltClose" type="button" aria-label="Fermer">×</button>
+      </div>
+      <div class="col" style="gap:2px">
+        <h3>Réseaux</h3>
+        <label class="tg"><input type="checkbox" id="lyTram"> Tram <small id="lyTramN"></small></label>
+        <label class="tg"><input type="checkbox" id="lyBus"> Lignes de bus <small id="lyBusN"></small></label>
+        <div class="chipset" id="busFilter" hidden></div>
+      </div>
+      <div class="col" style="gap:2px">
+        <h3>Rues</h3>
+        <label class="tg"><input type="checkbox" id="lySmall"> Petites rues <small>résidentielles, zones 30</small></label>
+        <label class="tg"><input type="checkbox" id="lyArrows"> Sens uniques <small>flèches</small></label>
+        <label class="tg"><input type="checkbox" id="lyCov"> Zones de 500 m autour des arrêts de tram</label>
+      </div>
+      <div class="col" style="gap:6px">
+        <h3>Lieux</h3>
+        <label class="tg"><input type="checkbox" id="lyPoi"> Lieux importants</label>
+        <div class="chipset" id="catFilter"></div>
+        <label class="tg"><input type="checkbox" id="lyStops"> Arrêts <small>tram et bus</small></label>
+      </div>
+    </section>
+  </main>
+
+  <section class="sheet" id="sheet" aria-live="polite">
+    <div class="sheet-in gut">
+      <div id="idle">
+        <div class="col">
+          <div class="seg t3" id="tabs" role="group" aria-label="Sections">
+            <button type="button" data-tab="map" aria-pressed="true">Carte</button>
+            <button type="button" data-tab="lines" aria-pressed="false">Lignes</button>
+            <button type="button" data-tab="impact" aria-pressed="false">Impact</button>
+          </div>
+
+          <div class="col" id="tab-map">
+            <div>
+              <h2>Touchez une rue</h2>
+              <p class="sub">Puis choisissez son usage : voiture, bus, vélo ou piéton.</p>
+            </div>
+            <ul class="stats" id="stats"></ul>
+            <div class="find">
+              <input id="q" type="search" placeholder="Aller à une rue ou un lieu" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Chercher une rue ou un lieu">
+              <div class="res" id="res" hidden></div>
+            </div>
+            <div class="col" style="gap:8px">
+              <h3>Lieux importants</h3>
+              <div class="places" id="places"></div>
+              <p class="legend" id="legend"></p>
+            </div>
+            <div class="foot">
+              <span id="modcount">Aucune modification</span>
+              <button class="btn" id="copy" type="button" disabled>Copier le plan</button>
+            </div>
+            <textarea id="copybox" readonly hidden aria-label="Plan à copier"></textarea>
+          </div>
+
+          <div class="col" id="tab-lines" hidden>
+            <div class="row">
+              <button class="btn primary" id="newTram" type="button">+ Ligne de tram</button>
+              <button class="btn primary" id="newBus" type="button">+ Ligne de bus</button>
+            </div>
+            <div class="lsel" id="lineCard" hidden></div>
+            <div class="col" style="gap:8px"><h3>Tram</h3><div class="chipset" id="lnTram"></div></div>
+            <div class="col" style="gap:8px"><h3>Bus Fil Bleu</h3><div class="chipset" id="lnBus"></div></div>
+          </div>
+
+          <div class="col" id="tab-impact" hidden>
+            <div id="impactBox"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="edit" hidden>
+        <div class="col">
+          <div class="head">
+            <div style="min-width:0">
+              <h2 id="name"></h2>
+              <p class="sub" id="meta"></p>
+            </div>
+            <button class="btn" id="close" type="button" aria-label="Fermer">×</button>
+          </div>
+          <div class="seg" id="scope" role="group" aria-label="Portée du changement">
+            <button type="button" data-scope="segment" aria-pressed="false"></button>
+            <button type="button" data-scope="street" aria-pressed="true"></button>
+          </div>
+          <div class="modes" id="modes" role="group" aria-label="Usage de la rue">
+            <button class="mode" type="button" data-mode="car" aria-pressed="false" style="--c:var(--fg)"><i class="sw" style="--c:var(--m-carsw)"></i>Voiture</button>
+            <button class="mode" type="button" data-mode="bus" aria-pressed="false" style="--c:var(--m-bus)"><i class="sw" style="--c:var(--m-bus)"></i>Bus seul</button>
+            <button class="mode" type="button" data-mode="bike" aria-pressed="false" style="--c:var(--m-bike)"><i class="sw" style="--c:var(--m-bike)"></i>Vélo</button>
+            <button class="mode" type="button" data-mode="ped" aria-pressed="false" style="--c:var(--m-ped)"><i class="sw" style="--c:var(--m-ped)"></i>Piéton</button>
+          </div>
+          <div class="way" id="wayrow">
+            <label><input type="checkbox" id="oneway"> Sens unique</label>
+            <button class="btn" id="invert" type="button">Inverser le sens</button>
+          </div>
+          <div class="col" style="gap:6px" id="onStreet">
+            <h3>Lignes sur cette rue</h3>
+            <p class="impact" id="tramOn"></p>
+            <div class="chipset" id="busOn"></div>
+            <select id="busAdd" aria-label="Ajouter une ligne de bus sur cette rue"></select>
+          </div>
+          <button class="btn primary" id="openCoupe" type="button">Dessiner la coupe de la rue</button>
+          <p class="impact" id="impact"></p>
+        </div>
+      </div>
+
+      <div id="poi" hidden>
+        <div class="col">
+          <div class="head">
+            <div style="min-width:0">
+              <h2 id="pName"></h2>
+              <p class="sub" id="pCat"></p>
+            </div>
+            <button class="btn" id="pClose" type="button" aria-label="Fermer">×</button>
+          </div>
+          <p class="impact" id="pLines" hidden></p>
+          <div class="row">
+            <button class="btn" id="pZoom" type="button">Zoomer ici</button>
+            <button class="btn" id="pTram" type="button">Ligne de tram d’ici</button>
+            <button class="btn" id="pBus" type="button">Ligne de bus d’ici</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="tramdraw" hidden>
+        <div class="col">
+          <div>
+            <h2 id="tTitle">Nouvelle ligne de tram</h2>
+            <p class="sub" id="tHint"></p>
+          </div>
+          <input id="tName" type="text" value="Ligne 1" aria-label="Nom de la ligne" autocomplete="off">
+          <p class="impact" id="tInfo"></p>
+          <div class="row">
+            <button class="btn" id="tUndo" type="button">Retirer le dernier arrêt</button>
+            <button class="btn primary" id="tDone" type="button" disabled>Terminer</button>
+            <button class="btn" id="tCancel" type="button">Abandonner</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="coupe" id="coupe" hidden aria-label="Coupe de la rue">
+    <div class="coupe-bar gut">
+      <button class="btn" id="cBack" type="button">‹ Retour</button>
+      <div style="min-width:0"><span class="eyebrow">Coupe de rue</span><b id="cName"></b></div>
+    </div>
+    <div class="coupe-body gut">
+      <div class="diagram" id="cSvg"></div>
+      <div class="tot">
+        <label for="cW">Largeur entre façades <input id="cW" type="number" inputmode="decimal" min="3" max="80" step="0.5"> m</label>
+        <button class="btn" id="cFit" type="button">Caler sur les éléments</button>
+      </div>
+      <p class="impact" id="cSum"></p>
+      <div class="items" id="cItems"></div>
+      <div class="col" style="gap:8px"><h3>Ajouter un élément</h3><div class="adds" id="cAdds"></div></div>
+      <div class="col" style="gap:8px"><h3>Modèles de départ</h3><div class="presets" id="cPresets"></div></div>
+      <div class="col" style="gap:8px">
+        <button class="btn primary" id="cApply" type="button">Appliquer à la carte</button>
+        <p class="impact" id="cApplyNote"></p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script type="application/json" id="data">__DATA__</script>
